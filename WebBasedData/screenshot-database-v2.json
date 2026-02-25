@@ -3,8 +3,8 @@
         "total": 12439,
         "done": 5952,
         "packages_with_icon": 5952,
-        "packages_with_screenshot": 1362,
-        "total_screenshots": 4222
+        "packages_with_screenshot": 1363,
+        "total_screenshots": 4226
     },
     "icons_and_screenshots": {
         "__test_entry_DO_NOT_EDIT_PLEASE": {
@@ -20930,8 +20930,13 @@
             "images": []
         },
         "itch": {
-            "icon": "https://community.chocolatey.org/content/packageimages/itch.25.5.1.png",
-            "images": []
+            "icon": "https://raw.githubusercontent.com/itchio/itch/refs/heads/master/src/static/images/tray/itch.png",
+            "images": [
+                "https://static.itch.io/images/app/collections@1x.png",
+                "https://static.itch.io/images/app/gamepage@1x.png",
+                "https://static.itch.io/images/app/install@1x.png",
+                "https://static.itch.io/images/app/html5@1x.png"
+            ]
         },
         "itopdatarecovery": {
             "icon": "",
