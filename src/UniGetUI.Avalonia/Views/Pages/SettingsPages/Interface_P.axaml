@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:UniGetUI.Avalonia.ViewModels.Pages.SettingsPages"
              xmlns:settings="using:UniGetUI.Avalonia.Views.Controls.Settings"
+             xmlns:t="using:UniGetUI.Avalonia.MarkupExtensions"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
@@ -27,14 +28,15 @@
                                               FontWeight="SemiBold"
                                               Margin="44,32,4,8"/>
 
-                <settings:CheckboxCard x:Name="DisableSystemTray"
+                <settings:CheckboxCard SettingName="DisableSystemTray"
+                                       Text="{t:Translate Close UniGetUI to the system tray}"
                                        CornerRadius="8,8,0,0"/>
 
                 <settings:ButtonCard x:Name="EditAutostartSettings"
                                      CornerRadius="0,0,8,8"
                                      BorderThickness="1,0,1,1"
-                                     Text="Manage WingetUI autostart behaviour"
-                                     ButtonText="Open"
+                                     Text="{t:Translate Manage WingetUI autostart behaviour}"
+                                     ButtonText="{t:Translate Open}"
                                      Command="{Binding EditAutostartSettingsCommand}"/>
             </StackPanel>
 
@@ -42,19 +44,24 @@
                                           FontWeight="SemiBold"
                                           Margin="44,32,4,8"/>
 
-            <settings:CheckboxCard x:Name="DisableIconsOnPackageLists"
+            <settings:CheckboxCard SettingName="DisableIconsOnPackageLists"
+                                   Text="{t:Translate Show package icons on package lists}"
+                                   StateChangedCommand="{Binding ShowRestartRequiredCommand}"
                                    CornerRadius="8,8,0,0"/>
 
             <settings:ButtonCard x:Name="ResetIconCache"
                                  CornerRadius="0,0,8,8"
                                  BorderThickness="1,0,1,1"
-                                 ButtonText="Clear cache"
+                                 Header="{Binding IconCacheSizeText}"
+                                 ButtonText="{t:Translate Clear cache}"
                                  Command="{Binding ResetIconCacheCommand}"
                                  CommandParameter="{Binding $self}"/>
 
             <Border Height="16"/>
 
-            <settings:CheckboxCard x:Name="DisableSelectingUpdatesByDefault"
+            <settings:CheckboxCard SettingName="DisableSelectingUpdatesByDefault"
+                                   Text="{t:Translate Select upgradable packages by default}"
+                                   StateChangedCommand="{Binding ShowRestartRequiredCommand}"
                                    CornerRadius="8"/>
 
         </StackPanel>

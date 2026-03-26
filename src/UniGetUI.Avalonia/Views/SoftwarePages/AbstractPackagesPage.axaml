@@ -4,6 +4,7 @@
              xmlns:vm="using:UniGetUI.Avalonia.ViewModels.Pages"
              xmlns:controls="using:UniGetUI.Avalonia.Views.Controls"
              xmlns:pkg="using:UniGetUI.PackageEngine.PackageClasses"
+             xmlns:t="using:UniGetUI.Avalonia.MarkupExtensions"
 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -18,6 +19,33 @@
       </Style>
       <Style Selector="DataGridCell:current">
          <Setter Property="BorderBrush" Value="Transparent"/>
+      </Style>
+      <Style Selector="DataGridColumnHeader">
+         <Setter Property="Background" Value="{DynamicResource SettingsCardBackground}"/>
+      </Style>
+      <Style Selector="Expander /template/ ToggleButton#ExpanderHeader">
+         <Setter Property="Background" Value="{DynamicResource SettingsCardBackground}"/>
+      </Style>
+      <!-- Toolbar buttons: flat, no background/border in normal state (WinUI AppBarButton style) -->
+      <Style Selector="#ToolbarRow Button">
+         <Setter Property="Background" Value="Transparent"/>
+         <Setter Property="BorderThickness" Value="0"/>
+      </Style>
+      <Style Selector="#ToolbarRow ToggleButton">
+         <Setter Property="Background" Value="Transparent"/>
+         <Setter Property="BorderThickness" Value="0"/>
+      </Style>
+      <Style Selector="#ToolbarRow ToggleButton:checked">
+         <Setter Property="Background" Value="{DynamicResource SystemAccentColor}"/>
+      </Style>
+      <!-- Main action button: card background with border -->
+      <Style Selector="Button#MainToolbarButton">
+         <Setter Property="Background" Value="{DynamicResource SettingsCardBackground}"/>
+         <Setter Property="BorderThickness" Value="1"/>
+      </Style>
+      <Style Selector="Button#MainToolbarButtonDropdown">
+         <Setter Property="Background" Value="{DynamicResource SettingsCardBackground}"/>
+         <Setter Property="BorderThickness" Value="1"/>
       </Style>
    </UserControl.Styles>
 
@@ -72,7 +100,7 @@
                             Orientation="Horizontal"
                             Spacing="4"
                             VerticalAlignment="Center">
-                    <TextBlock Text="Order by:" VerticalAlignment="Center"/>
+                    <TextBlock Text="{t:Translate Order by:}" VerticalAlignment="Center"/>
                     <Button x:Name="OrderByButton" Padding="8,4" CornerRadius="4">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <TextBlock Text="{Binding SortFieldName}" VerticalAlignment="Center" FontSize="12"/>
@@ -80,14 +108,14 @@
                         </StackPanel>
                         <Button.Flyout>
                             <MenuFlyout Placement="BottomEdgeAlignedLeft">
-                                <MenuItem x:Name="OrderByName_Menu"       Header="Name"        Click="OrderByName_Click"/>
-                                <MenuItem x:Name="OrderById_Menu"         Header="Id"          Click="OrderById_Click"/>
-                                <MenuItem x:Name="OrderByVersion_Menu"    Header="Version"     Click="OrderByVersion_Click"/>
-                                <MenuItem x:Name="OrderByNewVersion_Menu" Header="New version" Click="OrderByNewVersion_Click"/>
-                                <MenuItem x:Name="OrderBySource_Menu"     Header="Source"      Click="OrderBySource_Click"/>
+                                <MenuItem x:Name="OrderByName_Menu"       Header="{t:Translate Name}"        Command="{Binding SortByNameCommand}"/>
+                                <MenuItem x:Name="OrderById_Menu"         Header="{t:Translate Id}"          Command="{Binding SortByIdCommand}"/>
+                                <MenuItem x:Name="OrderByVersion_Menu"    Header="{t:Translate Version}"     Command="{Binding SortByVersionCommand}"/>
+                                <MenuItem x:Name="OrderByNewVersion_Menu" Header="{t:Translate New version}" Command="{Binding SortByNewVersionCommand}"/>
+                                <MenuItem x:Name="OrderBySource_Menu"     Header="{t:Translate Source}"      Command="{Binding SortBySourceCommand}"/>
                                 <Separator/>
-                                <MenuItem x:Name="OrderByAscending_Menu"  Header="Ascending"   Click="OrderByAscending_Click"/>
-                                <MenuItem x:Name="OrderByDescending_Menu" Header="Descending"  Click="OrderByDescending_Click"/>
+                                <MenuItem x:Name="OrderByAscending_Menu"  Header="{t:Translate Ascendant}"   Command="{Binding SetSortAscendingCommand}"/>
+                                <MenuItem x:Name="OrderByDescending_Menu" Header="{t:Translate Descendant}"  Command="{Binding SetSortDescendingCommand}"/>
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
@@ -112,10 +140,10 @@
                             Orientation="Horizontal"
                             Spacing="4"
                             VerticalAlignment="Center">
-                    <TextBlock Text="View mode:" VerticalAlignment="Center"/>
+                    <TextBlock Text="{t:Translate View mode:}" VerticalAlignment="Center"/>
                     <ListBox x:Name="ViewModeSelector"
                              SelectionMode="Single"
-                             SelectedIndex="{Binding ViewMode, Mode=TwoWay}"
+                             SelectedIndex="{Binding ViewModeIndex, Mode=TwoWay}"
                              Background="Transparent"
                              BorderThickness="1"
                              CornerRadius="4"
@@ -148,7 +176,7 @@
               Grid.Row="1"
               ColumnDefinitions="Auto,Auto,*"
               ColumnSpacing="4"
-              Margin="0,0,0,8">
+              Margin="0">
 
             <!-- Filters toggle — MinWidth tracks the filter pane so action buttons stay aligned with the package list -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,8,0"
@@ -160,7 +188,7 @@
                               IsChecked="{Binding IsFilterPaneOpen, Mode=TwoWay}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <controls:SvgIcon Path="avares://UniGetUI.Avalonia/Assets/Symbols/options.svg" Width="16" Height="16" VerticalAlignment="Center"/>
-                        <TextBlock Text="Filters" FontSize="12" FontWeight="Medium" VerticalAlignment="Center"/>
+                        <TextBlock Text="{t:Translate Filters}" FontSize="12" FontWeight="Medium" VerticalAlignment="Center"/>
                     </StackPanel>
                 </ToggleButton>
             </StackPanel>
@@ -170,7 +198,6 @@
                 <Button x:Name="MainToolbarButton"
                         Height="36"
                         Margin="0,0,1,0"
-                        BorderThickness="0"
                         CornerRadius="4,0,0,4">
                     <StackPanel Orientation="Horizontal" Spacing="4">
                         <controls:SvgIcon x:Name="MainToolbarButtonIcon"
@@ -186,7 +213,6 @@
                         Width="30"
                         Height="36"
                         Padding="4"
-                        BorderThickness="0"
                         CornerRadius="0,4,4,0">
                     <TextBlock Text="▾" FontSize="20" HorizontalAlignment="Center"/>
                 </Button>
@@ -229,16 +255,17 @@
                                   HorizontalContentAlignment="Stretch"
                                   IsExpanded="True"
                                   CornerRadius="8"
-                                  Padding="4,4,4,8">
+                                  Padding="4,4,4,8"
+                                  Background="{DynamicResource SettingsCardBackground}">
                             <Expander.Header>
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <controls:SvgIcon Path="avares://UniGetUI.Avalonia/Assets/Symbols/local_pc.svg" Width="16" Height="16" VerticalAlignment="Center"/>
-                                    <TextBlock Text="Sources" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{t:Translate Sources}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Expander.Header>
                             <StackPanel Orientation="Vertical">
                                 <TextBlock x:Name="SourcesPlaceholderText"
-                                           Text="Search for packages to start"
+                                           Text="{t:Translate Search for packages to start}"
                                            MinHeight="60"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
@@ -261,7 +288,7 @@
                                             Padding="2"
                                             Background="Transparent"
                                             BorderThickness="0">
-                                        <TextBlock Text="Select all" FontSize="12" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{t:Translate Select all}" FontSize="12" FontWeight="SemiBold"/>
                                     </Button>
                                     <Button x:Name="ClearSourceSelectionButton"
                                             Grid.Column="1"
@@ -271,7 +298,7 @@
                                             Padding="2"
                                             Background="Transparent"
                                             BorderThickness="0">
-                                        <TextBlock Text="Clear selection" FontSize="12" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{t:Translate Clear selection}" FontSize="12" FontWeight="SemiBold"/>
                                     </Button>
                                     <ItemsControl x:Name="SourcesTreeView"
                                               Grid.Row="1"
@@ -295,25 +322,26 @@
                                   HorizontalContentAlignment="Stretch"
                                   IsExpanded="False"
                                   CornerRadius="8"
-                                  Padding="16,8,16,8">
+                                  Padding="16,8,16,8"
+                                  Background="{DynamicResource SettingsCardBackground}">
                             <Expander.Header>
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <controls:SvgIcon Path="avares://UniGetUI.Avalonia/Assets/Symbols/options.svg" Width="16" Height="16" VerticalAlignment="Center"/>
-                                    <TextBlock Text="Filters" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{t:Translate Filters}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Expander.Header>
                             <StackPanel HorizontalAlignment="Stretch" Orientation="Vertical" Spacing="0">
                                 <CheckBox x:Name="InstantSearchCheckbox"
                                           IsChecked="{Binding InstantSearch, Mode=TwoWay}">
-                                    <TextBlock Text="Instant search" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{t:Translate Instant search}" TextWrapping="Wrap"/>
                                 </CheckBox>
                                 <CheckBox x:Name="UpperLowerCaseCheckbox"
                                           IsChecked="{Binding UpperLowerCase, Mode=TwoWay}">
-                                    <TextBlock Text="Distinguish between uppercase and lowercase" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{t:Translate Distinguish between uppercase and lowercase}" TextWrapping="Wrap"/>
                                 </CheckBox>
                                 <CheckBox x:Name="IgnoreSpecialCharsCheckbox"
                                           IsChecked="{Binding IgnoreSpecialChars, Mode=TwoWay}">
-                                    <TextBlock Text="Ignore special characters" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{t:Translate Ignore special characters}" TextWrapping="Wrap"/>
                                 </CheckBox>
                             </StackPanel>
                         </Expander>
@@ -323,50 +351,40 @@
                                   HorizontalContentAlignment="Stretch"
                                   IsExpanded="True"
                                   CornerRadius="8"
-                                  Padding="16,8,16,8">
+                                  Padding="16,8,16,8"
+                                  Background="{DynamicResource SettingsCardBackground}">
                             <Expander.Header>
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <controls:SvgIcon Path="avares://UniGetUI.Avalonia/Assets/Symbols/search.svg" Width="16" Height="16" VerticalAlignment="Center"/>
-                                    <TextBlock Text="Search mode" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{t:Translate Search mode}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Expander.Header>
                             <StackPanel HorizontalAlignment="Stretch" Orientation="Vertical" Spacing="0">
-                                <RadioButton x:Name="QueryNameRadio"
-                                             GroupName="QueryOptionsGroup"
-                                             Height="30"
+                                <RadioButton Height="30"
                                              Margin="0,-2,0,-2"
-                                             IsCheckedChanged="QueryNameRadio_IsCheckedChanged">
-                                    <TextBlock Text="Package Name" TextWrapping="Wrap"/>
+                                             IsChecked="{Binding SearchMode_Name, Mode=TwoWay}">
+                                    <TextBlock Text="{t:Translate Package Name}" TextWrapping="Wrap"/>
                                 </RadioButton>
-                                <RadioButton x:Name="QueryIdRadio"
-                                             GroupName="QueryOptionsGroup"
-                                             Height="30"
+                                <RadioButton Height="30"
                                              Margin="0,-2,0,-2"
-                                             IsCheckedChanged="QueryIdRadio_IsCheckedChanged">
-                                    <TextBlock Text="Package ID" TextWrapping="Wrap"/>
+                                             IsChecked="{Binding SearchMode_Id, Mode=TwoWay}">
+                                    <TextBlock Text="{t:Translate Package ID}" TextWrapping="Wrap"/>
                                 </RadioButton>
-                                <RadioButton x:Name="QueryBothRadio"
-                                             GroupName="QueryOptionsGroup"
-                                             Height="30"
+                                <RadioButton Height="30"
                                              Margin="0,-2,0,-2"
-                                             IsChecked="True"
-                                             IsCheckedChanged="QueryBothRadio_IsCheckedChanged">
-                                    <TextBlock Text="Both" TextWrapping="Wrap"/>
+                                             IsChecked="{Binding SearchMode_Both, Mode=TwoWay}">
+                                    <TextBlock Text="{t:Translate Both}" TextWrapping="Wrap"/>
                                 </RadioButton>
-                                <RadioButton x:Name="QueryExactMatch"
-                                             GroupName="QueryOptionsGroup"
-                                             Height="30"
+                                <RadioButton Height="30"
                                              Margin="0,-2,0,-2"
-                                             IsCheckedChanged="QueryExactMatch_IsCheckedChanged">
-                                    <TextBlock Text="Exact match" TextWrapping="Wrap"/>
+                                             IsChecked="{Binding SearchMode_Exact, Mode=TwoWay}">
+                                    <TextBlock Text="{t:Translate Exact match}" TextWrapping="Wrap"/>
                                 </RadioButton>
-                                <RadioButton x:Name="QuerySimilarResultsRadio"
-                                             GroupName="QueryOptionsGroup"
-                                             Height="30"
+                                <RadioButton Height="30"
                                              Margin="0,-2,0,-2"
-                                             IsCheckedChanged="QuerySimilarResultsRadio_IsCheckedChanged"
+                                             IsChecked="{Binding SearchMode_Similar, Mode=TwoWay}"
                                              IsEnabled="{Binding SimilarSearchEnabled}">
-                                    <TextBlock Text="Show similar packages" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{t:Translate Show similar packages}" TextWrapping="Wrap"/>
                                 </RadioButton>
                             </StackPanel>
                         </Expander>
@@ -390,10 +408,24 @@
                 <!-- Package list container -->
                 <Border Margin="0,6,0,6"
                         CornerRadius="8"
-                        BorderThickness="1">
-                <Grid RowDefinitions="*">
+                        BorderThickness="1"
+                        BorderBrush="{DynamicResource AppBorderBrush}"
+                        Background="{DynamicResource SettingsCardBackground}">
+                <Grid RowDefinitions="Auto,*">
+                    <!-- Header bar for grid/icons views (select-all) — hidden in list mode, which has its own DataGrid header -->
+                    <Border Grid.Row="0"
+                            IsVisible="{Binding !IsListViewMode}"
+                            BorderBrush="{DynamicResource AppBorderBrush}"
+                            BorderThickness="0,0,0,1"
+                            Padding="10,0">
+                        <CheckBox IsChecked="{Binding AllPackagesChecked, Mode=TwoWay}"
+                                  Content="{t:Translate Select all}"
+                                  Height="32"
+                                  VerticalAlignment="Center"/>
+                    </Border>
+
                     <!-- Package list (list/grid/icons views) -->
-                    <Panel >
+                    <Panel Grid.Row="1">
                         <DataGrid x:Name="PackageList"
                                   IsVisible="{Binding IsListViewMode}"
                                   HorizontalAlignment="Stretch"
@@ -604,7 +636,8 @@
                              Padding="16,8,10,08"
                              CornerRadius="8,0,0,8"
                              FontSize="40"
-                             Watermark="Search for packages"
+                             Watermark="{t:Translate Search for packages}"
+                             Background="{DynamicResource AppWindowBackground}"
                              Text="{Binding MegaQueryText, Mode=TwoWay}"
                              KeyDown="MegaQueryBlock_KeyDown"/>
                     <Button x:Name="MegaFindButton"

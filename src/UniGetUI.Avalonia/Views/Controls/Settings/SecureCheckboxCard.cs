@@ -1,3 +1,4 @@
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -10,6 +11,15 @@ namespace UniGetUI.Avalonia.Views.Controls.Settings;
 
 public partial class SecureCheckboxCard : SettingsCard
 {
+    public static readonly StyledProperty<ICommand?> StateChangedCommandProperty =
+        AvaloniaProperty.Register<SecureCheckboxCard, ICommand?>(nameof(StateChangedCommand));
+
+    public ICommand? StateChangedCommand
+    {
+        get => GetValue(StateChangedCommandProperty);
+        set => SetValue(StateChangedCommandProperty, value);
+    }
+
     public ToggleSwitch _checkbox;
     public TextBlock _textblock;
     public TextBlock _warningBlock;
@@ -30,16 +40,6 @@ public partial class SecureCheckboxCard : SettingsCard
         }
     }
 
-    public new bool IsEnabled
-    {
-        set
-        {
-            base.IsEnabled = value;
-            _warningBlock.Opacity = value ? 1 : 0.2;
-        }
-        get => base.IsEnabled;
-    }
-
     public bool ForceInversion { get; set; }
     public bool Checked => _checkbox.IsChecked ?? false;
 
@@ -47,16 +47,29 @@ public partial class SecureCheckboxCard : SettingsCard
 
     public string Text
     {
-        set => _textblock.Text = CoreTools.Translate(value);
+        set => _textblock.Text = value;
     }
 
     public string WarningText
     {
         set
         {
-            _warningBlock.Text = CoreTools.Translate(value);
+            _warningBlock.Text = FormatTwoLine(value);
             _warningBlock.IsVisible = value.Any();
         }
+    }
+
+    // Splits translated warning text at the first sentence boundary so it renders
+    // on two readable lines. Handles both Latin (". ") and CJK ("。") separators.
+    private static string FormatTwoLine(string text)
+    {
+        var idx = text.IndexOf(". ", StringComparison.Ordinal);
+        if (idx >= 0)
+            return text[..(idx + 1)] + "\n" + text[(idx + 2)..];
+        idx = text.IndexOf('。');
+        if (idx >= 0)
+            return text[..(idx + 1)] + "\n" + text[(idx + 1)..];
+        return text;
     }
 
     public SecureCheckboxCard()
@@ -104,6 +117,18 @@ public partial class SecureCheckboxCard : SettingsCard
         };
 
         _checkbox.IsCheckedChanged += (s, e) => _ = _checkbox_Toggled();
+
+        this.GetObservable(IsEnabledProperty)
+            .Subscribe(enabled => _warningBlock.Opacity = enabled ? 1 : 0.2);
+
+        // The Devolutions SettingsCard measures the Header with infinite width, so
+        // TextWrapping alone won't constrain the warning block. We fix it by updating
+        // MaxWidth after every layout pass, leaving room for the Content (toggle) area.
+        SizeChanged += (_, e) =>
+        {
+            var contentWidth = (Content as Control)?.Bounds.Width ?? 0;
+            _warningBlock.MaxWidth = Math.Max(100, e.NewSize.Width - contentWidth - 48);
+        };
     }
 
     protected virtual async Task _checkbox_Toggled()
@@ -119,6 +144,9 @@ public partial class SecureCheckboxCard : SettingsCard
                 (_checkbox.IsChecked ?? false) ^ IS_INVERTED ^ ForceInversion
             );
             StateChanged?.Invoke(this, EventArgs.Empty);
+            var cmd = StateChangedCommand;
+            if (cmd?.CanExecute(null) == true)
+                cmd.Execute(null);
             _textblock.Opacity = (_checkbox.IsChecked ?? false) ? 1 : 0.7;
             _checkbox.IsChecked = SecureSettings.Get(setting_name) ^ IS_INVERTED ^ ForceInversion;
             _loading.IsVisible = false;

@@ -63,6 +63,9 @@
 
     <ItemGroup>
       <AvaloniaXaml Remove="Infrastructure\**" />
+      <!-- Style-only files have no x:Class; exclude from codegen and embed as plain resources -->
+      <AvaloniaXaml Remove="Assets\Styles\*.axaml" />
+      <AvaloniaResource Include="Assets\Styles\*.axaml" />
     </ItemGroup>
 
     <ItemGroup>
@@ -131,6 +134,9 @@
       <Compile Update="Views\Pages\SettingsPages\ManagersHomepage.axaml.cs">
         <DependentUpon>ManagersHomepage.axaml</DependentUpon>
         <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\DialogPages\OperationOutputWindow.axaml.cs">
+        <DependentUpon>OperationOutputWindow.axaml</DependentUpon>
       </Compile>
     </ItemGroup>
 

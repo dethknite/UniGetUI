@@ -5,6 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
+             xmlns:controls="using:UniGetUI.Avalonia.Views.Controls"
              x:DataType="vm:SettingsBasePageViewModel">
 
     <Grid RowDefinitions="Auto,Auto,*">
@@ -14,10 +15,14 @@
                     Orientation="Horizontal"
                     VerticalAlignment="Center"
                     Margin="16,12,16,8">
-            <Button x:Name="BackButton"
-                    Content="←"
+            <Button Command="{Binding BackCommand}"
                     Margin="0,0,12,0"
-                    Padding="8,4"/>
+                    Padding="4"
+                    Background="Transparent"
+                    BorderThickness="0">
+                <controls:SvgIcon Width="24" Height="24"
+                                  Path="avares://UniGetUI.Avalonia/Assets/Symbols/backward.svg"/>
+            </Button>
             <TextBlock Text="{Binding Title}"
                        FontSize="26"
                        FontWeight="SemiBold"
@@ -37,8 +42,8 @@
                 <TextBlock Text="{Binding RestartBannerText}"
                            VerticalAlignment="Center"
                            Margin="0,0,16,0"/>
-                <Button x:Name="RestartButton"
-                        Content="{Binding RestartButtonText}"
+                <Button Content="{Binding RestartButtonText}"
+                        Command="{Binding RestartAppCommand}"
                         HorizontalAlignment="Right"/>
             </StackPanel>
         </Border>

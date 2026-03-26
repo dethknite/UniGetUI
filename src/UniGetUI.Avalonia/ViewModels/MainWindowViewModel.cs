@@ -1,10 +1,11 @@
-using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using Avalonia;
+using Avalonia.Collections;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using UniGetUI.Avalonia.Infrastructure;
 using UniGetUI.Avalonia.ViewModels.Pages;
 using UniGetUI.Avalonia.Views;
@@ -46,8 +47,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public event EventHandler<PageType>? CurrentPageChanged;
 
     // ─── Operations panel ─────────────────────────────────────────────────────
-    public ObservableCollection<OperationViewModel> Operations
-        => AvaloniaOperationRegistry.OperationViewModels;
+    public AvaloniaList<OperationViewModel> Operations => AvaloniaOperationRegistry.OperationViewModels;
 
     [ObservableProperty]
     private bool _operationsPanelVisible;
@@ -120,6 +120,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool _telemetryWarnerVisible;
 
     // ─── Constructor ─────────────────────────────────────────────────────────
+    [RelayCommand]
+    private void ToggleSidebar() => Sidebar.IsPaneOpen = !Sidebar.IsPaneOpen;
+
     public MainWindowViewModel()
     {
         DiscoverPage = new DiscoverSoftwarePage();
@@ -337,7 +340,14 @@ public partial class MainWindowViewModel : ViewModelBase
         Sidebar.SelectNavButtonForPage(_currentPage);
     }
 
+    // ─── Banner close commands ────────────────────────────────────────────────
+    [RelayCommand] private void CloseUpdatesBanner() => UpdatesBannerVisible = false;
+    [RelayCommand] private void CloseErrorBanner() => ErrorBannerVisible = false;
+    [RelayCommand] private void CloseWinGetWarningBanner() => WinGetWarningBannerVisible = false;
+    [RelayCommand] private void CloseTelemetryWarner() => TelemetryWarnerVisible = false;
+
     // ─── Search box ──────────────────────────────────────────────────────────
+    [RelayCommand]
     public void SubmitGlobalSearch()
     {
         if (CurrentPageContent is ISearchBoxPage page)

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -9,6 +10,15 @@ namespace UniGetUI.Avalonia.Views.Controls.Settings;
 
 public sealed partial class TextboxCard : SettingsCard
 {
+    public static readonly StyledProperty<ICommand?> ValueChangedCommandProperty =
+        AvaloniaProperty.Register<TextboxCard, ICommand?>(nameof(ValueChangedCommand));
+
+    public ICommand? ValueChangedCommand
+    {
+        get => GetValue(ValueChangedCommandProperty);
+        set => SetValue(ValueChangedCommandProperty, value);
+    }
+
     private readonly TextBox _textbox;
     private readonly Button _helpbutton;   // WinUI HyperlinkButton → plain Button + Process.Start
 
@@ -27,12 +37,12 @@ public sealed partial class TextboxCard : SettingsCard
 
     public string Placeholder
     {
-        set => _textbox.Watermark = CoreTools.Translate(value);
+        set => _textbox.Watermark = value;
     }
 
     public string Text
     {
-        set => Header = CoreTools.Translate(value);
+        set => Header = value;
     }
 
     public Uri HelpUrl
@@ -82,5 +92,8 @@ public sealed partial class TextboxCard : SettingsCard
             CoreSettings.Set(setting_name, false);
 
         ValueChanged?.Invoke(this, EventArgs.Empty);
+        var cmd = ValueChangedCommand;
+        if (cmd?.CanExecute(null) == true)
+            cmd.Execute(null);
     }
 }

@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:UniGetUI.Avalonia.ViewModels.Pages.SettingsPages"
              xmlns:settings="using:UniGetUI.Avalonia.Views.Controls.Settings"
+             xmlns:t="using:UniGetUI.Avalonia.MarkupExtensions"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
@@ -22,24 +23,26 @@
                                           FontWeight="SemiBold"
                                           Margin="44,32,4,8"/>
 
-            <settings:CheckboxCard x:Name="EnablePackageBackupCheckBox_LOCAL"
+            <settings:CheckboxCard SettingName="EnablePackageBackup_LOCAL"
+                                   Text="{t:Translate Periodically perform a local backup of the installed packages}"
+                                   StateChangedCommand="{Binding EnableLocalBackupChangedCommand}"
                                    CornerRadius="8,8,0,0"/>
 
             <settings:ButtonCard x:Name="BackupNowButton_LOCAL"
                                  CornerRadius="0,0,8,8"
                                  BorderThickness="1,0,1,1"
-                                 Text="Perform a local backup now"
-                                 ButtonText="Backup"
+                                 Text="{t:Translate Perform a local backup now}"
+                                 ButtonText="{t:Translate Backup}"
                                  IsEnabled="{Binding IsLocalBackupEnabled}"
                                  Command="{Binding DoLocalBackupCommand}"
                                  CommandParameter="{Binding $self}"/>
 
             <Border Height="16"/>
 
-            <settings:ButtonCard x:Name="ChangeBackupDirectory"
-                                 CornerRadius="8"
-                                 Text="Change backup output directory"
-                                 ButtonText="Select"
+            <settings:ButtonCard CornerRadius="8"
+                                 Text="{t:Translate Change backup output directory}"
+                                 Description="{Binding BackupDirectoryLabel}"
+                                 ButtonText="{t:Translate Select}"
                                  IsEnabled="{Binding IsLocalBackupEnabled}"
                                  Command="{Binding PickBackupDirectoryCommand}"
                                  CommandParameter="{Binding $self}"/>
@@ -48,12 +51,14 @@
                                           FontWeight="SemiBold"
                                           Margin="44,32,4,8"/>
 
-            <settings:TextboxCard x:Name="ChangeBackupFileNameTextBox"
+            <settings:TextboxCard SettingName="ChangeBackupFileName"
+                                  Text="{t:Translate Set a custom backup file name}"
+                                  Placeholder="{t:Translate Leave empty for default}"
                                   CornerRadius="8,8,0,0"
-                                  Text="Set a custom backup file name"
                                   IsEnabled="{Binding IsLocalBackupEnabled}"/>
 
-            <settings:CheckboxCard x:Name="EnableBackupTimestamping"
+            <settings:CheckboxCard SettingName="EnableBackupTimestamping"
+                                   Text="{t:Translate Add a timestamp to the backup file names}"
                                    CornerRadius="0,0,8,8"
                                    BorderThickness="1,0,1,1"
                                    IsEnabled="{Binding IsLocalBackupEnabled}"/>

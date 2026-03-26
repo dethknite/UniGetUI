@@ -3,6 +3,7 @@
         xmlns:views="using:UniGetUI.Avalonia.Views"
         xmlns:vm="using:UniGetUI.Avalonia.ViewModels"
         xmlns:controls="using:UniGetUI.Avalonia.Views.Controls"
+        xmlns:t="using:UniGetUI.Avalonia.MarkupExtensions"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="750"
@@ -25,7 +26,7 @@
 
             <!-- ── Sidebar (spans all rows) ── -->
             <ContentControl Grid.Column="0" Grid.RowSpan="3"
-                            Width="250"
+                            Width="{Binding Sidebar.PaneWidth}"
                             Content="{Binding Sidebar}"
                             HorizontalContentAlignment="Stretch"
                             VerticalContentAlignment="Stretch">
@@ -152,6 +153,27 @@
             <!-- Drag area fills the whole title bar -->
             <Border Background="{DynamicResource AppTitleBarBackground}"
                     PointerPressed="TitleBar_PointerPressed"/>
+            <!-- Hamburger toggle button + app name -->
+            <StackPanel HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal"
+                        Margin="65,0,0,0"
+                        Spacing="8">
+                <Button Width="32" Height="32"
+                        Padding="4"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        CornerRadius="4"
+                        ToolTip.Tip="{t:Translate Toggle navigation panel}"
+                        Command="{Binding ToggleSidebarCommand}">
+                    <PathIcon Width="14" Height="14"
+                              Data="M1,1 H15 V3 H1 Z M1,7 H15 V9 H1 Z M1,13 H15 V15 H1 Z"/>
+                </Button>
+                <TextBlock Text="UniGetUI"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
             <StackPanel HorizontalAlignment="Right"
                         VerticalAlignment="Center"
                         Orientation="Horizontal"
@@ -171,7 +193,7 @@
                         Padding="3"
                         CornerRadius="0,4,4,0"
                         IsEnabled="{Binding GlobalSearchEnabled}"
-                        Click="SearchButton_Click">
+                        Command="{Binding SubmitGlobalSearchCommand}">
                     <controls:SvgIcon Path="avares://UniGetUI.Avalonia/Assets/Symbols/search.svg"
                                       Width="12"
                                       Height="12"/>
