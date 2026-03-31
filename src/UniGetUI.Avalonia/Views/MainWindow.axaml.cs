@@ -1,7 +1,10 @@
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using UniGetUI.Avalonia.ViewModels;
 using UniGetUI.Avalonia.Views.Pages;
+using UniGetUI.Core.Logging;
+using UniGetUI.Core.SettingsEngine;
 
 namespace UniGetUI.Avalonia.Views;
 
@@ -32,10 +35,13 @@ public partial class MainWindow : Window
         Error,
     }
 
+    public static MainWindow? Instance { get; private set; }
+
     private MainWindowViewModel ViewModel => (MainWindowViewModel)DataContext!;
 
     public MainWindow()
     {
+        Instance = this;
         DataContext = new MainWindowViewModel();
         InitializeComponent();
 
@@ -93,7 +99,20 @@ public partial class MainWindow : Window
     // ─── Public API (legacy compat) ───────────────────────────────────────────
     public void ShowBanner(string title, string message, RuntimeNotificationLevel level)
     {
-        // TODO: implement in-app notification display
+        if (level == RuntimeNotificationLevel.Progress) return;
+
+        var severity = level switch
+        {
+            RuntimeNotificationLevel.Error => InfoBarSeverity.Error,
+            RuntimeNotificationLevel.Success => InfoBarSeverity.Success,
+            _ => InfoBarSeverity.Informational,
+        };
+        ViewModel.ErrorBanner.ActionButtonText = "";
+        ViewModel.ErrorBanner.ActionButtonCommand = null;
+        ViewModel.ErrorBanner.Title = title;
+        ViewModel.ErrorBanner.Message = message;
+        ViewModel.ErrorBanner.Severity = severity;
+        ViewModel.ErrorBanner.IsOpen = true;
     }
 
     public void UpdateSystemTrayStatus()
@@ -103,4 +122,65 @@ public partial class MainWindow : Window
 
     public void ShowRuntimeNotification(string title, string message, RuntimeNotificationLevel level) =>
         ShowBanner(title, message, level);
+
+    // ─── BackgroundAPI integration ────────────────────────────────────────────
+    public void ShowFromTray()
+    {
+        Show();
+        WindowState = WindowState.Normal;
+        Activate();
+    }
+
+    public void QuitApplication()
+    {
+        (global::Avalonia.Application.Current?.ApplicationLifetime
+            as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
+    }
+
+    public void OpenSharedPackage(string managerName, string packageId)
+    {
+        // TODO: open package details for the shared package
+        Logger.Info($"OpenSharedPackage: {managerName}/{packageId}");
+        Navigate(PageType.Discover);
+    }
+
+    public static void ApplyProxyVariableToProcess()
+    {
+        try
+        {
+            var proxyUri = Settings.GetProxyUrl();
+            if (proxyUri is null || !Settings.Get(Settings.K.EnableProxy))
+            {
+                Environment.SetEnvironmentVariable("HTTP_PROXY", "", EnvironmentVariableTarget.Process);
+                return;
+            }
+
+            string content;
+            if (!Settings.Get(Settings.K.EnableProxyAuth))
+            {
+                content = proxyUri.ToString();
+            }
+            else
+            {
+                var creds = Settings.GetProxyCredentials();
+                if (creds is null)
+                {
+                    content = proxyUri.ToString();
+                }
+                else
+                {
+                    content = $"{proxyUri.Scheme}://{Uri.EscapeDataString(creds.UserName)}"
+                            + $":{Uri.EscapeDataString(creds.Password)}"
+                            + $"@{proxyUri.AbsoluteUri.Replace($"{proxyUri.Scheme}://", "")}";
+                }
+            }
+
+            Environment.SetEnvironmentVariable("HTTP_PROXY", content, EnvironmentVariableTarget.Process);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("Failed to apply proxy settings:");
+            Logger.Error(ex);
+        }
+    }
 }

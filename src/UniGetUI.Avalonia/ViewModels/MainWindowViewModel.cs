@@ -9,12 +9,15 @@ using CommunityToolkit.Mvvm.Input;
 using UniGetUI.Avalonia.Infrastructure;
 using UniGetUI.Avalonia.ViewModels.Pages;
 using UniGetUI.Avalonia.Views;
+using UniGetUI.Avalonia.Views.DialogPages;
 using UniGetUI.Avalonia.Views.Pages;
+using UniGetUI.Avalonia.Views.Pages.LogPages;
 using UniGetUI.Avalonia.Views.Pages.SettingsPages;
 using UniGetUI.Core.Data;
 using UniGetUI.Core.SettingsEngine;
 using UniGetUI.Core.Tools;
 using UniGetUI.PackageEngine;
+using UniGetUI.PackageEngine.Enums;
 using UniGetUI.PackageEngine.Interfaces;
 using UniGetUI.PackageEngine.PackageLoader;
 
@@ -33,6 +36,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private ManagerLogsPage? ManagerLogPage;
     private OperationHistoryPage? OperationHistoryPage;
     private HelpPage? HelpPage;
+    private ReleaseNotesPage? ReleaseNotesPage;
 
     // ─── Navigation state ────────────────────────────────────────────────────
     private PageType _oldPage = PageType.Null;
@@ -98,26 +102,10 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     // ─── Banners ─────────────────────────────────────────────────────────────
-    [ObservableProperty]
-    private bool _updatesBannerVisible;
-
-    [ObservableProperty]
-    private string _updatesBannerText = "";
-
-    [ObservableProperty]
-    private bool _errorBannerVisible;
-
-    [ObservableProperty]
-    private string _errorBannerText = "";
-
-    [ObservableProperty]
-    private bool _winGetWarningBannerVisible;
-
-    [ObservableProperty]
-    private string _winGetWarningBannerText = "";
-
-    [ObservableProperty]
-    private bool _telemetryWarnerVisible;
+    public InfoBarViewModel UpdatesBanner { get; } = new() { Severity = InfoBarSeverity.Success };
+    public InfoBarViewModel ErrorBanner { get; } = new() { Severity = InfoBarSeverity.Error };
+    public InfoBarViewModel WinGetWarningBanner { get; } = new() { Severity = InfoBarSeverity.Warning };
+    public InfoBarViewModel TelemetryWarner { get; } = new() { Severity = InfoBarSeverity.Informational };
 
     // ─── Constructor ─────────────────────────────────────────────────────────
     [RelayCommand]
@@ -170,19 +158,46 @@ public partial class MainWindowViewModel : ViewModelBase
 
         Sidebar.NavigationRequested += (_, pageType) => NavigateTo(pageType);
 
+        AvaloniaAutoUpdater.UpdateAvailable += version => Dispatcher.UIThread.Post(() =>
+        {
+            UpdatesBanner.Title = CoreTools.Translate("UniGetUI {0} is ready to be installed.", version);
+            UpdatesBanner.Message = CoreTools.Translate("The update process will start after closing UniGetUI");
+            UpdatesBanner.ActionButtonText = CoreTools.Translate("Update now");
+            UpdatesBanner.ActionButtonCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(AvaloniaAutoUpdater.TriggerInstall);
+            UpdatesBanner.IsClosable = true;
+            UpdatesBanner.IsOpen = true;
+        });
+
         // Keep OperationsPanelVisible in sync with the live operations list
         Operations.CollectionChanged += (_, _) =>
             OperationsPanelVisible = Operations.Count > 0;
 
-        if (CoreTools.IsAdministrator() && !Settings.Get(Settings.K.AlreadyWarnedAboutAdmin))
+        if (OperatingSystem.IsWindows() && CoreTools.IsAdministrator() && !Settings.Get(Settings.K.AlreadyWarnedAboutAdmin))
         {
             Settings.Set(Settings.K.AlreadyWarnedAboutAdmin, true);
-            // TODO: _ = DialogHelper.WarnAboutAdminRights();
+            WinGetWarningBanner.Title = CoreTools.Translate("Administrator privileges");
+            WinGetWarningBanner.Message = CoreTools.Translate(
+                "UniGetUI has been ran as administrator, which is not recommended. When running UniGetUI as administrator, EVERY operation launched from UniGetUI will have administrator privileges. You can still use the program, but we highly recommend not running UniGetUI with administrator privileges."
+            );
+            WinGetWarningBanner.IsClosable = true;
+            WinGetWarningBanner.IsOpen = true;
         }
 
         if (!Settings.Get(Settings.K.ShownTelemetryBanner))
         {
-            // TODO: DialogHelper.ShowTelemetryBanner();
+            TelemetryWarner.Title = CoreTools.Translate("Share anonymous usage data");
+            TelemetryWarner.Message = CoreTools.Translate(
+                "UniGetUI collects anonymous usage data in order to improve the user experience."
+            );
+            TelemetryWarner.IsClosable = true;
+            TelemetryWarner.ActionButtonText = CoreTools.Translate("Accept");
+            TelemetryWarner.ActionButtonCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() =>
+            {
+                TelemetryWarner.IsOpen = false;
+                Settings.Set(Settings.K.ShownTelemetryBanner, true);
+            });
+            TelemetryWarner.OnClosed = () => Settings.Set(Settings.K.ShownTelemetryBanner, true);
+            TelemetryWarner.IsOpen = true;
         }
 
         LoadDefaultPage();
@@ -198,7 +213,7 @@ public partial class MainWindowViewModel : ViewModelBase
             "installed" => PageType.Installed,
             "bundles" => PageType.Bundles,
             "settings" => PageType.Settings,
-            _ => UpgradablePackagesLoader.Instance?.Count() > 0 ? PageType.Updates : PageType.Discover,
+            _ => UpgradablePackagesLoader.Instance is { } l && l.Count() > 0 ? PageType.Updates : PageType.Discover,
         };
         NavigateTo(type);
     }
@@ -216,6 +231,7 @@ public partial class MainWindowViewModel : ViewModelBase
             PageType.ManagerLog => ManagerLogPage ??= new ManagerLogsPage(),
             PageType.OperationHistory => OperationHistoryPage ??= new OperationHistoryPage(),
             PageType.Help => HelpPage ??= new HelpPage(),
+            PageType.ReleaseNotes => ReleaseNotesPage ??= new ReleaseNotesPage(),
             PageType.Null => throw new InvalidOperationException("Page type is Null"),
             _ => throw new InvalidDataException($"Unknown page type {type}"),
         };
@@ -248,7 +264,6 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (newPage_t is PageType.About) { _ = ShowAboutDialog(); return; }
         if (newPage_t is PageType.Quit) { (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown(); return; }
-        if (newPage_t is PageType.ReleaseNotes) { /* TODO: DialogHelper.ShowReleaseNotes(); */ return; }
 
         Sidebar.SelectNavButtonForPage(newPage_t);
 
@@ -333,18 +348,20 @@ public partial class MainWindowViewModel : ViewModelBase
         HelpPage?.NavigateTo(uriAttachment);
     }
 
+    public async Task LoadCloudBundleAsync(string content)
+    {
+        NavigateTo(PageType.Bundles);
+        await BundlesPage.OpenFromString(content, BundleFormatType.UBUNDLE, "GitHub Gist");
+    }
+
     private async Task ShowAboutDialog()
     {
         Sidebar.SelectNavButtonForPage(PageType.Null);
-        // TODO: await DialogHelper.ShowAboutUniGetUI();
+        var owner = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+        if (owner is not null)
+            await new AboutWindow().ShowDialog(owner);
         Sidebar.SelectNavButtonForPage(_currentPage);
     }
-
-    // ─── Banner close commands ────────────────────────────────────────────────
-    [RelayCommand] private void CloseUpdatesBanner() => UpdatesBannerVisible = false;
-    [RelayCommand] private void CloseErrorBanner() => ErrorBannerVisible = false;
-    [RelayCommand] private void CloseWinGetWarningBanner() => WinGetWarningBannerVisible = false;
-    [RelayCommand] private void CloseTelemetryWarner() => TelemetryWarnerVisible = false;
 
     // ─── Search box ──────────────────────────────────────────────────────────
     [RelayCommand]

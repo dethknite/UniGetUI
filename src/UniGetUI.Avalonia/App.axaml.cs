@@ -1,10 +1,11 @@
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Platform;
 using Avalonia.Styling;
+using UniGetUI.Avalonia.Infrastructure;
 using UniGetUI.Avalonia.Views;
 using UniGetUI.PackageEngine;
 using CoreSettings = global::UniGetUI.Core.SettingsEngine.Settings;
@@ -16,6 +17,9 @@ public partial class App : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+#if AVALONIA_DIAGNOSTICS_ENABLED
+        this.AttachDeveloperTools();
+#endif
 
         string platform = OperatingSystem.IsWindows() ? "Windows"
             : OperatingSystem.IsMacOS() ? "macOS"
@@ -31,17 +35,17 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Avoid duplicate validations from both Avalonia and the CommunityToolkit.
-            // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
-            DisableAvaloniaDataAnnotationValidation();
             if (OperatingSystem.IsMacOS())
+            {
                 ExpandMacOSPath();
+                using var stream = AssetLoader.Open(new Uri("avares://UniGetUI.Avalonia/Assets/icon.png"));
+                using var ms = new MemoryStream();
+                stream.CopyTo(ms);
+                MacOsNotificationBridge.SetDockIcon(ms.ToArray());
+            }
             PEInterface.LoadLoaders();
             ApplyTheme(CoreSettings.GetValue(CoreSettings.K.PreferredTheme));
             var mainWindow = new MainWindow();
-#if DEBUG
-            mainWindow.AttachDevTools();
-#endif
             desktop.MainWindow = mainWindow;
             _ = Task.Run(PEInterface.LoadManagers);
         }
@@ -86,16 +90,4 @@ public partial class App : Application
         };
     }
 
-    private static void DisableAvaloniaDataAnnotationValidation()
-    {
-        // Get an array of plugins to remove
-        var dataValidationPluginsToRemove =
-            BindingPlugins.DataValidators.OfType<DataAnnotationsValidationPlugin>().ToArray();
-
-        // remove each entry found
-        foreach (var plugin in dataValidationPluginsToRemove)
-        {
-            BindingPlugins.DataValidators.Remove(plugin);
-        }
-    }
 }
