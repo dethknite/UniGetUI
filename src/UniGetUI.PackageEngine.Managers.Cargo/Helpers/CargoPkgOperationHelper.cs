@@ -15,15 +15,23 @@ internal sealed class CargoPkgOperationHelper(Cargo cargo) : BasePkgOperationHel
     {
         var installVersion = options.Version == string.Empty ? package.VersionString : options.Version;
 
+        bool hasBinstall = ((Cargo)Manager).HasBinstall;
+
         List<string> parameters;
         switch (operation)
         {
             case OperationType.Install:
-                parameters = [Manager.Properties.InstallVerb, "--version", installVersion, package.Id];
+                if (hasBinstall)
+                    parameters = [Manager.Properties.InstallVerb, "--version", installVersion, package.Id];
+                else
+                    parameters = ["install", package.Id, "--version", installVersion];
                 break;
 
             case OperationType.Update:
-                parameters = [Manager.Properties.UpdateVerb, package.Id];
+                if (hasBinstall)
+                    parameters = [Manager.Properties.UpdateVerb, package.Id];
+                else
+                    parameters = ["install", package.Id, "--force"];
                 break;
 
             case OperationType.Uninstall:
@@ -36,13 +44,16 @@ internal sealed class CargoPkgOperationHelper(Cargo cargo) : BasePkgOperationHel
 
         if (operation is OperationType.Install or OperationType.Update)
         {
-            parameters.Add("--no-confirm");
+            if (hasBinstall)
+            {
+                parameters.Add("--no-confirm");
 
-            if (options.SkipHashCheck)
-                parameters.Add("--skip-signatures");
+                if (options.SkipHashCheck)
+                    parameters.Add("--skip-signatures");
 
-            if (options.CustomInstallLocation != "")
-                parameters.AddRange(["--install-path", options.CustomInstallLocation]);
+                if (options.CustomInstallLocation != "")
+                    parameters.AddRange(["--install-path", options.CustomInstallLocation]);
+            }
         }
 
         parameters.AddRange(
@@ -64,6 +75,11 @@ internal sealed class CargoPkgOperationHelper(Cargo cargo) : BasePkgOperationHel
         int returnCode
     )
     {
-        return returnCode == 0 ? OperationVeredict.Success : OperationVeredict.Failure;
+        if (returnCode == 0)
+        {
+            ((Cargo)Manager).InvalidateInstalledCache();
+            return OperationVeredict.Success;
+        }
+        return OperationVeredict.Failure;
     }
 }
