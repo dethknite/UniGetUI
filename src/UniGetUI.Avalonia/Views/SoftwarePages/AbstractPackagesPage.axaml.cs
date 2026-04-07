@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
+using Avalonia.Threading;
 using UniGetUI.Avalonia.ViewModels.Pages;
 using UniGetUI.Avalonia.Views.Controls;
 using UniGetUI.Core.Tools;
@@ -86,7 +87,13 @@ public abstract partial class AbstractPackagesPage : UserControl,
     // ─── UI-only: focus the package list ─────────────────────────────────────
     private void OnFocusListRequested() => PackageList.Focus();
 
-    public void FocusPackageList() => ViewModel.RequestFocusList();
+    public void FocusPackageList()
+    {
+        if (ViewModel.MegaQueryBoxEnabled)
+            Dispatcher.UIThread.Post(() => MegaQueryBlock.Focus(), DispatcherPriority.Background);
+        else
+            ViewModel.RequestFocusList();
+    }
     public void FilterPackages() => ViewModel.FilterPackages();
 
     // ─── Abstract: let concrete pages add toolbar items ───────────────────────
