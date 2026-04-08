@@ -18,6 +18,7 @@ using UniGetUI.PackageEngine;
 using UniGetUI.PackageEngine.Classes.Manager.Classes;
 using UniGetUI.PackageEngine.Interfaces;
 using UniGetUI.Pages.DialogPages;
+using UniGetUI.Services;
 using Windows.ApplicationModel.Activation;
 using LaunchActivatedEventArgs = Microsoft.UI.Xaml.LaunchActivatedEventArgs;
 
@@ -346,6 +347,9 @@ namespace UniGetUI
                 await Task.WhenAll(iniTasks);
 
                 // Load non-essential components
+                TelemetryHandler.Configure(
+                    Secrets.GetOpenSearchUsername(),
+                    Secrets.GetOpenSearchPassword());
                 _ = TelemetryHandler.InitializeAsync();
                 _ = IconDatabase.Instance.LoadIconAndScreenshotsDatabaseAsync();
 
