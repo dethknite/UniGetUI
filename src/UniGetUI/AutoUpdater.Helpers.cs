@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -9,6 +10,8 @@ namespace UniGetUI;
 
 public partial class AutoUpdater
 {
+    private const string INSTALLER_VALIDATION_FAILURE_MARKER_SUFFIX = ".validation-failed";
+
     private const string REGISTRY_PATH = @"Software\Devolutions\UniGetUI";
     private const string DEFAULT_PRODUCTINFO_URL = "https://devolutions.net/productinfo.json";
     private const string DEFAULT_PRODUCTINFO_KEY = "Devolutions.UniGetUI";
@@ -149,6 +152,33 @@ public partial class AutoUpdater
         char[] normalized = thumbprint.ToLowerInvariant().Where(char.IsAsciiHexDigit).ToArray();
 
         return new string(normalized);
+    }
+
+    internal static string GetInstallerValidationFailureMarkerPath(string installerPath)
+    {
+        return installerPath + INSTALLER_VALIDATION_FAILURE_MARKER_SUFFIX;
+    }
+
+    private static void ClearInstallerValidationFailure(string markerPath)
+    {
+        DeleteFileIfExists(markerPath, "installer validation failure marker");
+    }
+
+    private static void DeleteFileIfExists(string path, string description)
+    {
+        if (!File.Exists(path))
+        {
+            return;
+        }
+
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Could not delete {description} at '{path}': {ex.Message}");
+        }
     }
 
     private static UpdaterOverrides LoadUpdaterOverrides()

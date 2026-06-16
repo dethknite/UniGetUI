@@ -296,14 +296,14 @@ public partial class AutoUpdater
                 Logger.Warn("User has disabled updates");
                 return;
             }
-            bool updateSucceeded = await CheckAndInstallUpdates(
+            await CheckAndInstallUpdates(
                 window,
                 banner,
                 false,
                 IsFirstLaunch
             );
             IsFirstLaunch = false;
-            await Task.Delay(TimeSpan.FromMinutes(updateSucceeded ? 60 : 10));
+            await Task.Delay(UpdaterDownloadEngine.DefaultAutomaticUpdateCheckInterval);
         }
     }
 
@@ -351,6 +351,15 @@ public partial class AutoUpdater
                     CoreData.UniGetUIDataDirectory,
                     "UniGetUI Updater.exe"
                 );
+                UpdaterDownloadIdentity installerIdentity = new(
+                    updateCandidate.VersionName,
+                    updateCandidate.InstallerHash,
+                    updateCandidate.InstallerDownloadUrl
+                );
+                string installerValidationFailureMarkerPath =
+                    GetInstallerValidationFailureMarkerPath(InstallerPath);
+                string installerDownloadFailureStatePath =
+                    UpdaterDownloadEngine.GetFailureStatePath(InstallerPath);
 
                 if (
                     File.Exists(InstallerPath)
@@ -362,6 +371,11 @@ public partial class AutoUpdater
                     && CheckInstallerSignerThumbprint(InstallerPath, updaterOverrides)
                 )
                 {
+                    ClearInstallerValidationFailure(installerValidationFailureMarkerPath);
+                    UpdaterDownloadEngine.ClearFailureState(
+                        installerDownloadFailureStatePath,
+                        message => LogUpdateWarn(message)
+                    );
                     LogUpdateInfo($"A cached valid installer was found, launching update process...");
                     return await PrepairToLaunchInstaller(
                         InstallerPath,
@@ -371,7 +385,31 @@ public partial class AutoUpdater
                     );
                 }
 
-                File.Delete(InstallerPath);
+                if (File.Exists(InstallerPath))
+                {
+                    LogUpdateWarn(
+                        "Cached installer is invalid; it will be kept until a replacement is validated."
+                    );
+                }
+
+                if (
+                    !ManualCheck
+                    && UpdaterDownloadEngine.IsFailureBackoffActive(
+                        installerDownloadFailureStatePath,
+                        installerIdentity,
+                        DateTime.UtcNow,
+                        out TimeSpan remainingBackoff,
+                        out UpdaterDownloadFailureState? failureState,
+                        message => LogUpdateWarn(message)
+                    )
+                )
+                {
+                    LogUpdateWarn(
+                        $"Skipping installer download for version {updateCandidate.VersionName}; previous {failureState?.FailureClass ?? "download"} failure is backed off for {remainingBackoff:g}."
+                    );
+                    MarkAttemptFinished("installer download skipped by failure backoff");
+                    return true;
+                }
 
                 ShowMessage_ThreadSafe(
                     CoreTools.Translate(
@@ -384,20 +422,46 @@ public partial class AutoUpdater
                 );
 
                 // Download the installer
-                await DownloadInstaller(
-                    updateCandidate.InstallerDownloadUrl,
-                    InstallerPath,
-                    updaterOverrides
-                );
+                string downloadedInstallerPath;
+                try
+                {
+                    downloadedInstallerPath = await DownloadInstaller(
+                        updateCandidate.InstallerDownloadUrl,
+                        InstallerPath,
+                        updaterOverrides,
+                        installerIdentity
+                    );
+                }
+                catch (Exception ex)
+                {
+                    UpdaterDownloadEngine.RecordFailure(
+                        installerDownloadFailureStatePath,
+                        installerIdentity,
+                        "download",
+                        DateTime.UtcNow,
+                        message => LogUpdateWarn(message)
+                    );
+                    LogUpdateWarn($"Installer download failed: {ex.Message}");
+                    throw;
+                }
 
                 if (
                     await CheckInstallerHash(
-                        InstallerPath,
+                        downloadedInstallerPath,
                         updateCandidate.InstallerHash,
                         updaterOverrides
-                    ) && CheckInstallerSignerThumbprint(InstallerPath, updaterOverrides)
+                    ) && CheckInstallerSignerThumbprint(downloadedInstallerPath, updaterOverrides)
                 )
                 {
+                    UpdaterDownloadEngine.PromotePartialDownload(
+                        InstallerPath,
+                        message => LogUpdateWarn(message)
+                    );
+                    ClearInstallerValidationFailure(installerValidationFailureMarkerPath);
+                    UpdaterDownloadEngine.ClearFailureState(
+                        installerDownloadFailureStatePath,
+                        message => LogUpdateWarn(message)
+                    );
                     LogUpdateInfo("The downloaded installer is valid, launching update process...");
                     return await PrepairToLaunchInstaller(
                         InstallerPath,
@@ -407,6 +471,18 @@ public partial class AutoUpdater
                     );
                 }
 
+                UpdaterDownloadEngine.RecordFailure(
+                    installerDownloadFailureStatePath,
+                    installerIdentity,
+                    "validation",
+                    DateTime.UtcNow,
+                    message => LogUpdateWarn(message)
+                );
+                UpdaterDownloadEngine.DeletePartialDownload(
+                    InstallerPath,
+                    message => LogUpdateWarn(message)
+                );
+
                 ShowMessage_ThreadSafe(
                     CoreTools.Translate("The installer authenticity could not be verified."),
                     CoreTools.Translate("The update process has been aborted."),
@@ -415,7 +491,7 @@ public partial class AutoUpdater
                     CreateViewLogButton()
                 );
                 MarkAttemptFinished("authenticity verification failed");
-                return false;
+                return !ManualCheck;
             }
 
             if (Verbose)
@@ -628,10 +704,11 @@ public partial class AutoUpdater
     /// <summary>
     /// Downloads the given installer to the given location
     /// </summary>
-    private static async Task DownloadInstaller(
+    private static async Task<string> DownloadInstaller(
         string downloadUrl,
         string installerLocation,
-        UpdaterOverrides updaterOverrides
+        UpdaterOverrides updaterOverrides,
+        UpdaterDownloadIdentity identity
     )
     {
         if (!IsSourceUrlAllowed(downloadUrl, updaterOverrides.AllowUnsafeUrls))
@@ -644,12 +721,17 @@ public partial class AutoUpdater
         {
             client.Timeout = TimeSpan.FromSeconds(600);
             client.DefaultRequestHeaders.UserAgent.ParseAdd(CoreData.UserAgentString);
-            HttpResponseMessage result = await client.GetAsync(downloadUrl);
-            result.EnsureSuccessStatusCode();
-            using FileStream fs = new(installerLocation, FileMode.OpenOrCreate);
-            await result.Content.CopyToAsync(fs);
+            using CancellationTokenSource downloadTimeout = new(TimeSpan.FromSeconds(600));
+            UpdaterDownloadResult result = await UpdaterDownloadEngine.DownloadInstallerPartAsync(
+                client,
+                identity,
+                installerLocation,
+                message => LogUpdateDebug(message),
+                downloadTimeout.Token
+            );
+            LogUpdateDebug("The download has finished successfully");
+            return result.PartialPath;
         }
-        LogUpdateDebug("The download has finished successfully");
     }
 
     /// <summary>
