@@ -51,6 +51,27 @@
          <Setter Property="Width" Value="10"/>
          <Setter Property="Height" Value="2"/>
       </Style>
+      <!-- Mega query box focus: WinUI-style accent underline across the whole box, instead of a
+           full-border accent or the field swapping to its focused (black) background. -->
+      <Style Selector="Border#MegaQueryUnderline">
+         <Setter Property="Opacity" Value="0"/>
+         <Setter Property="Background" Value="{DynamicResource SystemAccentColor}"/>
+         <Setter Property="Transitions">
+            <Transitions>
+               <DoubleTransition Property="Opacity" Duration="0:0:0.12"/>
+            </Transitions>
+         </Setter>
+      </Style>
+      <!-- Hover: subtle neutral underline (WinUI shows a lighter line on pointer-over). -->
+      <Style Selector="Border#MegaQueryContainer:pointerover Border#MegaQueryUnderline">
+         <Setter Property="Opacity" Value="1"/>
+         <Setter Property="Background" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+      </Style>
+      <!-- Focus: accent underline (declared after hover so it wins when both apply). -->
+      <Style Selector="Border#MegaQueryContainer:focus-within Border#MegaQueryUnderline">
+         <Setter Property="Opacity" Value="1"/>
+         <Setter Property="Background" Value="{DynamicResource SystemAccentColor}"/>
+      </Style>
    </UserControl.Styles>
 
    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="8,8,8,8">
@@ -103,6 +124,13 @@
                  with the package list when the pane is open, and collapse next to the Filters button when closed. -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,8,0"
                         MinWidth="{Binding FilterPaneColumnWidth}">
+                <!-- Animate the reserved width so opening/closing the filter pane slides the
+                     action buttons into place instead of snapping them sideways. -->
+                <StackPanel.Transitions>
+                    <Transitions>
+                        <DoubleTransition Property="MinWidth" Duration="0:0:0.2" Easing="CubicEaseOut"/>
+                    </Transitions>
+                </StackPanel.Transitions>
                 <ToggleButton x:Name="ToggleFiltersButton"
                               Classes="filter-toggle"
                               Height="40"
@@ -166,13 +194,13 @@
         <!-- ==================== MAIN CONTENT (filter pane + package list) ==================== -->
         <Grid x:Name="FilteringPanel"
               Grid.Row="2"
+              ClipToBounds="True"
               ColumnDefinitions="220,4,*">
 
             <!-- ===== FILTER PANE =====
                  SidePanel is the Border the code-behind positions (inline vs overlay mode). -->
                 <Border x:Name="SidePanel"
                         Grid.Column="0"
-                        IsVisible="{Binding IsFilterPaneOpen}"
                         CornerRadius="8"
                         ClipToBounds="True">
                 <ScrollViewer x:Name="SidePanelScroller"
@@ -742,7 +770,8 @@
                       RowDefinitions="*,64,*"
                       ColumnDefinitions="*,8*,64,*">
                     <!-- Single outer border unifies the search field and search button so the seam between them is invisible. -->
-                    <Border Grid.Row="1"
+                    <Border x:Name="MegaQueryContainer"
+                            Grid.Row="1"
                             Grid.Column="1"
                             Grid.ColumnSpan="2"
                             CornerRadius="8"
@@ -750,31 +779,48 @@
                             BorderThickness="1"
                             Background="{DynamicResource MicaPageBackground}"
                             ClipToBounds="True">
-                        <Grid ColumnDefinitions="*,64">
-                            <TextBox x:Name="MegaQueryBlock"
-                                     Grid.Column="0"
-                                     Padding="16,0,10,0"
-                                     VerticalContentAlignment="Center"
-                                     CornerRadius="7,0,0,7"
-                                     BorderThickness="0"
-                                     Background="Transparent"
-                                     FontSize="40"
-                                     PlaceholderText="{t:Translate Search for packages}"
-                                     automation:AutomationProperties.Name="{t:Translate Search for packages}"
-                                     Text="{Binding MegaQueryText, Mode=TwoWay}"
-                                     KeyDown="MegaQueryBlock_KeyDown"/>
-                            <Button x:Name="MegaFindButton"
-                                    Grid.Column="1"
-                                    HorizontalAlignment="Stretch"
-                                    VerticalAlignment="Stretch"
-                                    CornerRadius="0"
-                                    BorderThickness="0"
-                                    Background="Transparent"
-                                    automation:AutomationProperties.Name="{t:Translate Search for packages}"
-                                    Command="{Binding SubmitSearch}">
-                                <controls:SvgIcon Path="avares://UniGetUI.Avalonia/Assets/Symbols/search.svg" Width="40" Height="40"/>
-                            </Button>
-                        </Grid>
+                        <Panel>
+                            <Grid ColumnDefinitions="*,64">
+                                <TextBox x:Name="MegaQueryBlock"
+                                         Grid.Column="0"
+                                         Padding="16,0,10,0"
+                                         VerticalContentAlignment="Center"
+                                         CornerRadius="0"
+                                         BorderThickness="0"
+                                         Background="Transparent"
+                                         FontSize="40"
+                                         PlaceholderText="{t:Translate Search for packages}"
+                                         automation:AutomationProperties.Name="{t:Translate Search for packages}"
+                                         Text="{Binding MegaQueryText, Mode=TwoWay}"
+                                         KeyDown="MegaQueryBlock_KeyDown">
+                                    <!-- Keep the field on the container fill (no focused/hover black swap)
+                                         and drop its own focus underline; the container owns both. -->
+                                    <TextBox.Resources>
+                                        <Thickness x:Key="TextControlBorderThemeThicknessFocused">0</Thickness>
+                                        <SolidColorBrush x:Key="TextControlBackground" Color="Transparent"/>
+                                        <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent"/>
+                                        <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent"/>
+                                    </TextBox.Resources>
+                                </TextBox>
+                                <Button x:Name="MegaFindButton"
+                                        Grid.Column="1"
+                                        HorizontalAlignment="Stretch"
+                                        VerticalAlignment="Stretch"
+                                        CornerRadius="0"
+                                        BorderThickness="0"
+                                        Background="Transparent"
+                                        automation:AutomationProperties.Name="{t:Translate Search for packages}"
+                                        Command="{Binding SubmitSearch}">
+                                    <controls:SvgIcon Path="avares://UniGetUI.Avalonia/Assets/Symbols/search.svg" Width="40" Height="40"/>
+                                </Button>
+                            </Grid>
+                            <!-- WinUI focus underline: accent line across the bottom of the whole box -->
+                            <Border x:Name="MegaQueryUnderline"
+                                    VerticalAlignment="Bottom"
+                                    Height="2"
+                                    Margin="1,0,1,0"
+                                    IsHitTestVisible="False"/>
+                        </Panel>
                     </Border>
                 </Grid>
 
