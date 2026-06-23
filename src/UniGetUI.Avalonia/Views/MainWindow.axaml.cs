@@ -3,7 +3,6 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -308,36 +307,39 @@ public partial class MainWindow : Window
             // macOS: extend into the native title bar area.
             // WindowDecorationMargin.Top drives TitleBarGrid.Height via binding.
             // Traffic lights sit on the left → keep the 65 px HamburgerPanel margin.
+            // Request a 44 px title bar (matching Windows/Linux) instead of the default
+            // ~28 px one: the default is shorter than the 32 px search pill, so the
+            // centred pill overflowed upward and hugged the top of the window. macOS
+            // vertically centres the traffic lights in the taller bar.
             ExtendClientAreaToDecorationsHint = true;
-            ExtendClientAreaTitleBarHeightHint = -1;
+            ExtendClientAreaTitleBarHeightHint = 44;
 
             // In fullscreen the native title bar is hidden and WindowDecorationMargin
             // collapses to 0, which would clip the search box and hamburger. Use a fixed
             // title bar height in that state, and drop the traffic-light reservation
             // since the traffic lights aren't shown either.
-            this.GetObservable(WindowStateProperty).SubscribeValue(state =>
+            //
+            // Track the window state and the live decoration margin directly rather than
+            // via string-based Bindings: reflection bindings are trim-unsafe (IL2026).
+            void ApplyMacTitleBarLayout()
             {
-                if (state == WindowState.FullScreen)
+                if (WindowState == WindowState.FullScreen)
                 {
-                    TitleBarGrid.ClearValue(HeightProperty);
                     TitleBarGrid.Height = 44;
-                    MainContentRoot.ClearValue(MarginProperty);
                     MainContentRoot.Margin = new Thickness(0, 44, 0, 0);
                     HamburgerPanel.Margin = new Thickness(10, 0, 8, 0);
                 }
                 else
                 {
-                    TitleBarGrid.Bind(HeightProperty, new Binding("WindowDecorationMargin.Top")
-                    {
-                        RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor) { AncestorType = typeof(Window) },
-                    });
-                    MainContentRoot.Bind(MarginProperty, new Binding("WindowDecorationMargin")
-                    {
-                        RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor) { AncestorType = typeof(Window) },
-                    });
+                    Thickness margin = WindowDecorationMargin;
+                    TitleBarGrid.Height = margin.Top;
+                    MainContentRoot.Margin = margin;
                     HamburgerPanel.Margin = new Thickness(65, 0, 8, 0);
                 }
-            });
+            }
+
+            this.GetObservable(WindowStateProperty).SubscribeValue(_ => ApplyMacTitleBarLayout());
+            this.GetObservable(WindowDecorationMarginProperty).SubscribeValue(_ => ApplyMacTitleBarLayout());
         }
         else if (OperatingSystem.IsWindows())
         {
